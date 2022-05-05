@@ -4,12 +4,31 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 
 
+class PostQuerySet(models.QuerySet):
+
+    def popular(self):
+        popular_posts = self.annotate(Count('likes')).order_by('-likes__count')
+        return popular_posts
+
+    def fetch_with_comments_count(self):
+        """To be used to avoid double annotate in a single query"""
+        post_ids = [post.id for post in self]
+        posts_with_comments = Post.objects.filter(id__in=post_ids) \
+            .annotate(comments_count=Count('comments'))
+        ids_and_comments = posts_with_comments.values_list('id', 'comments_count')
+        comments_count_for_id = dict(ids_and_comments)
+        for post in self:
+            post.comments_count = comments_count_for_id[post.id]
+        return self
+
+
 class Post(models.Model):
     title = models.CharField('Заголовок', max_length=200)
     text = models.TextField('Текст')
     slug = models.SlugField('Название в виде url', max_length=200)
     image = models.ImageField('Картинка')
     published_at = models.DateTimeField('Дата и время публикации')
+    objects = PostQuerySet.as_manager()
 
     author = models.ForeignKey(
         User,
