@@ -13,9 +13,13 @@ class PostQuerySet(models.QuerySet):
     def fetch_with_comments_count(self):
         """To be used to avoid double annotate in a single query"""
         post_ids = [post.id for post in self]
-        posts_with_comments = Post.objects.filter(id__in=post_ids) \
-            .annotate(comments_count=Count('comments'))
-        ids_and_comments = posts_with_comments.values_list('id', 'comments_count')
+        posts_with_comments = (Post.objects
+                                   .filter(id__in=post_ids)
+                                   .annotate(comments_count=Count('comments')))
+        ids_and_comments = posts_with_comments.values_list(
+            'id',
+            'comments_count'
+        )
         comments_count_for_id = dict(ids_and_comments)
         for post in self:
             post.comments_count = comments_count_for_id[post.id]
